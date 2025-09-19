@@ -9,6 +9,7 @@ import numpy as np
 
 windowx = 800
 windowy = 800
+
 gridsize = 3
 
 class Node:
