@@ -9,82 +9,9 @@ import numpy as np
 
 windowx = 800
 windowy = 800
-
 gridsize = 3
 
-class Node:
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
-        self.next = None
 
-
-class HashTable:
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.size = 0
-        self.table = [None] * capacity
-
-    def _hash(self, key):
-        return hash(key) % self.capacity
-
-    def insert(self, key, value):
-        index = self._hash(key)
-
-        if self.table[index] is None:
-            self.table[index] = Node(key, value)
-            self.size += 1
-        else:
-            current = self.table[index]
-            while current:
-                if current.key == key:
-                    current.value = value
-                    return
-                current = current.next
-            new_node = Node(key, value)
-            new_node.next = self.table[index]
-            self.table[index] = new_node
-            self.size += 1
-
-    def search(self, key):
-        index = self._hash(key)
-
-        current = self.table[index]
-        while current:
-            if current.key == key:
-                return current.value
-            current = current.next
-
-        raise KeyError(key)
-
-    def remove(self, key):
-        index = self._hash(key)
-
-        previous = None
-        current = self.table[index]
-
-        while current:
-            if current.key == key:
-                if previous:
-                    previous.next = current.next
-                else:
-                    self.table[index] = current.next
-                self.size -= 1
-                return
-            previous = current
-            current = current.next
-
-        raise KeyError(key)
-
-    def __len__(self):
-        return self.size
-
-    def __contains__(self, key):
-        try:
-            self.search(key)
-            return True
-        except KeyError:
-            return False
 
 
 class bildimage(QLabel):
@@ -105,7 +32,8 @@ class bildimage(QLabel):
                 x = self.frameGeometry().width()
                 y = self.frameGeometry().height()
                 self.setFixedSize(x,y)
-                self.setText("Name : " + self.daten.get("Name") +"\n"+
+                if self.pfad != "" :
+                    self.setText("Name : " + self.daten.get("Name") +"\n"+
                     "Adresse : " + self.daten.get("Adresse") + "\n" +
                     "Flag : " + self.daten.get("Flags") + "\n" +
                     "Notiz : " + self.daten.get("Notizen") + "\n" +
@@ -134,36 +62,38 @@ class Startwindow(QMainWindow):
 
     def __init__(self,a):
         super().__init__() #was macht diese zeile
-        self.windowstate = 0 #0 anfang, 1 pinboard 2 hinzufuegen
+        self.windowstate = 0
         self.checklist = os.listdir("bilder")
         self.imglist = [[]]
-        self.flaglist = []
+        self.flaglist = {}
+        self.flaginput = ""
+        self.flags = []
         self.addlist = a
-        self.hashflag =  HashTable(10)
         self.imglistmanage()
         self.setWindowTitle('Pinboard/archive')
         self.setFixedSize(windowx,windowy)
-        self.statechanger(self.windowstate)
+        self.statechanger(self.windowstate,-1)
 
+    #Anfangsbildschirm
     def hscreen(self) :
         self.alay= QHBoxLayout()
         self.abutton = QPushButton("Add",self)
         self.abutton.setCheckable(True)
-        self.abutton.clicked.connect(lambda:self.statechanger(1))
+        self.abutton.clicked.connect(lambda:self.statechanger(1,0))
         self.abutton.setFixedSize(200,200)
         self.bbutton = QPushButton("See",self)
         self.bbutton.setCheckable(True)
-        self.bbutton.clicked.connect(lambda:self.statechanger(2))
+        self.bbutton.clicked.connect(lambda:self.statechanger(2,0))
         self.bbutton.setFixedSize(200,200)
         self.alay.addWidget(self.abutton)
         self.alay.addWidget(self.bbutton)
-        print(self.windowstate)
+        #print(self.windowstate)
         mains = QWidget()
         mains.setLayout(self.alay)
         self.setCentralWidget(mains )
 
 
-
+    #Bildschirm zum hinzufuegen von Bildern
     def addscreen(self):
             #Eingabe / Addscreen
             self.windowstate = 1
@@ -181,10 +111,10 @@ class Startwindow(QMainWindow):
             addbutton.setCheckable(True)
             endbutton = QPushButton("Zurueck",self)
             endbutton.setCheckable(True)
-            endbutton.clicked.connect(lambda:self.statechanger(0))
+            endbutton.clicked.connect(lambda:self.statechanger(0,1))
             res = addbutton.clicked.connect(lambda:self.diccollect(nameline.text(),adrline.text(),flagline.text(),notine.text(),bewertline.text()))
-            if res != {} :
-                print("valid")
+          #  if res != {} :
+          #      print("valid")
             self.blay.addRow("Name",nameline) 
             self.blay.addRow("Adressse",adrline)
             self.blay.addRow("Flag",notine)
@@ -195,17 +125,37 @@ class Startwindow(QMainWindow):
             addscreen.setLayout(self.blay)
             self.setCentralWidget(addscreen)
 
-    def statechanger(self,number):
-        self.windowstate = number
+    #Funktion zum wechseln des Bildschirmstatus, Bildschirmstatus = welcher Bildschirm es ist
+    def statechanger(self,zu,von):
+        if von == 1 :
+            self.imglistmanage()
+        self.windowstate = zu
         self.windowswitch(self.windowstate)
 
+    #fuellt die Flag liste mit den gewuenschten Flags auf und aktualisiert das Bild
+    def flagsearch(self,lineinput:str):
+        self.flags = []
+        self.flaginput = lineinput.split()
+        for x in self.flaginput :
+            if  x in list(self.flaglist.keys()) :
+                self.flags.append(x)
+        self.pinboardscreen(0,self.flags)
+       # print(self.flags)
+
+
+
+
+    #Dictionary,welches die Bilder nach Flags sortiert
     def flagfill(self,a):
         s = a.get("Flags").split()
         for x in s :
-            self.hashflag.insert(x,a)
-            if x not in self.flaglist :
-                self.flaglist.append(x)
+            if x  in self.flaglist :
+                if a not in self.flaglist[x] :
+                    self.flaglist[x].append(a)
+            else :
+                self.flaglist[x] = [a]
 
+    #Imglist beinhaltet die Json Informationen der Bilder und wird zum darstellen der Bilder benutzt
     def imglistmanage(self) :
         self.imglist = [[]]
         checked = []
@@ -214,62 +164,78 @@ class Startwindow(QMainWindow):
         for x in self.addlist :
             if x.get("Adresse") in self.checklist and x.get("Adresse") not in checked :
                 checked.append(x.get("Adresse"))
-                print(x.get("Adresse") + "Welcome" )
+#                print(x.get("Adresse") + "Welcome" )
                 if currents == gridsize*gridsize :
-                    print("2")
+#                    print("2")
                     self.flagfill(x)
                     nextl = nextl +1 
                     currents = 1
                     self.imglist.append([])
                     self.imglist[nextl].append(x)
-                    print("2 " + str(len(self.imglist[nextl])))
+#                    print("2 " + str(len(self.imglist[nextl])))
                 else : 
                     self.flagfill(x)
                     currents = currents +1
                     self.imglist[nextl].append(x)
-                    print("1 " + str(len(self.imglist[nextl])))
+#                    print("1 " + str(len(self.imglist[nextl])))
 
         
-
-    def pinboardscreen(self,seite):
+    #Pinboard Bildschirm
+    def pinboardscreen(self,seite,flags):
         #self.cshecklist = os.listdir("bilder")
-        print(self.checklist)
+        #print(self.checklist)
         self.imglistmanage()
-        print(self.flaglist)
+#        print("asdf\n")
+#        print(self.flaglist["11"])
+#        print("asdf\n")
+#
         seescreen = QWidget()
         pinlayout = QGridLayout()
         knoepfe = QHBoxLayout()
+        flagfelder = QHBoxLayout()
         if seite -1 >= 0 :
             prevpagebutton = QPushButton("Seite-1",self)
             prevpagebutton.setFixedSize(60,80)
             prevpagebutton.setCheckable(True)
-            prevpagebutton.clicked.connect(lambda:self.pinboardscreen(seite-1))
+            prevpagebutton.clicked.connect(lambda:self.pinboardscreen(seite-1,[]))
         if seite +1 < len(self.imglist) :
             nextpagebutton = QPushButton("Seite+1",self)
             nextpagebutton.setFixedSize(60,80)
             nextpagebutton.setCheckable(True)
-            nextpagebutton.clicked.connect(lambda:self.pinboardscreen(seite+1))
+            nextpagebutton.clicked.connect(lambda:self.pinboardscreen(seite+1,[]))
         returnbutton = QPushButton("Zurueck",self)
         returnbutton.setFixedSize(60,80)
         returnbutton.move(700,800)
         returnbutton.setCheckable(True)
-        returnbutton.clicked.connect(lambda:self.statechanger(0))
-       # print("row " + str(pinlayout.rowCount()))
-        print("col " + str(pinlayout.columnCount()))
+        returnbutton.clicked.connect(lambda:self.statechanger(0,2))
+#        print("col " + str(pinlayout.columnCount()))
+
+        if flags != [] :
+            print("jo")
+            self.imglist = [[]]
+            count= 0
+            seitenzahl = 0
+            for x in flags :
+                if count == gridsize*gridsize:
+                    count = 0
+                    seitenzahl += 1
+                    self.imglist.append([])
+                    self.imglist[seitenzahl] += self.flaglist[x]
+                else :
+                    count += 1
+                    self.imglist[seitenzahl] += self.flaglist[x]
 
 
-        for y in self.imglist :
-            print(str(len(y)) + " size " )
-       #eher schlechte version um ein gridlayout zu versichern  muss veraendert werden
+
         if len(self.imglist) % 2 != 0 :
             gridlen = len(self.imglist)+1
         else :
             gridlen = len(self.imglist)
-        print("nich float  " + str(gridlen))
+#        print("nich float  " + str(gridlen))
         
         gridx = int(np.sqrt(gridlen)) + 1
         gridy = int(np.sqrt(gridlen)) +1 
-        print(str(gridx) + " und " +str(gridy) + " von " + str(gridlen))
+#        print(str(gridx) + " und " +str(gridy) + " von " + str(gridlen))
         imgindex = 0
 
         gridx = gridsize
@@ -295,6 +261,12 @@ class Startwindow(QMainWindow):
                 pinlayout.addWidget(bLabel,x+1,y)
           
         mainpinlayout = QVBoxLayout()
+        flageeingabe = QLineEdit(self)
+        flagbutton = QPushButton("Suche",self)
+        flagbutton.clicked.connect(lambda:self.flagsearch(flageeingabe.text()))
+        flagfelder.addWidget(flageeingabe)
+        flagfelder.addWidget(flagbutton)
+        mainpinlayout.addLayout(flagfelder)
         mainpinlayout.addLayout(pinlayout)
         knoepfe.addWidget(returnbutton)
         if seite -1 >= 0:
@@ -305,20 +277,20 @@ class Startwindow(QMainWindow):
         seescreen.setLayout(mainpinlayout)
         self.setCentralWidget(seescreen)
 
+
+    #Funktion zum wechseln zwischen den Bildschirmen
     def windowswitch(self,a):
-        print("von " + str(a))
+        #print("von " + str(a))
         if a == 1 :
             self.addscreen()
         elif a== 0 :
             self.hscreen()
         elif a == 2 : 
-            self.pinboardscreen(0)
-        print(self.windowstate)
+            self.pinboardscreen(0,[])
+#        print(self.windowstate)
 
+    #Json Datei Informationen werden in eine Dictionary gepackt
     def diccreator(self,n: str,ad:str ,f: list,no: str,b: int):
-        #add the inputs to a dict which will then be put in to json
-        print(self.windowstate) 
-        # f muss zu ner liste dafuer .split benutzen und noch in der vorherigen funktion woerter completer coden
         if n == "" or  len(n) == 0 :
             print("falsche Eingabe name")
             return {}
@@ -328,7 +300,7 @@ class Startwindow(QMainWindow):
         elif no == "" or len(no) == 0 :
             print("falsche Eingabe  liste/flags")
             return {}
-        elif   len(b) == 0 :
+        elif   len(str(b)) == 0 :
             print("falsche Eingabe bewertung")
             return {}
         res = { "Name" : n, "Adresse" : ad,"Flags": f, "Notizen": no,  "Bewertung" : b}
@@ -336,23 +308,25 @@ class Startwindow(QMainWindow):
 
 
         return dict(name =n, flags = f,notes =no , bewertung = b)
+
+    #Wenn ein neues Bild erstellt wird,diese Funktion durchgefuehrt, sie erstellen das Dictionary und fuegt es zur addliste hinzu
     def diccollect(self,n:str,ad: str ,f: list,no: str,b: int):
         a = self.diccreator(n,ad,f,no,b)
-        print(a)
+        #print(a)
         if a == {} :
             return
         else :
             self.addlist.append(a)
-            print("added")
+            #print("added")
 
 
 
 
 
-with open("data.json","r") as file :
-    output= json.load(file)
+#with open("data.json","r") as file :
+#    output= json.load(file)
 
-print(output)
+#print(output)
 
 
 
@@ -366,14 +340,14 @@ with open("data.json") as file:
 #print(a)
 
 
-print(len(jstestring))
-print(type(jstestring))
+#print(len(jstestring))
+#print(type(jstestring))
 app = QApplication(sys.argv)
 window = Startwindow(jstestring);
 window.show()
 app.exec()
-print(window.windowstate)
-print(window.addlist)
+#print(window.windowstate)
+#print(window.addlist)
 
     #bzw nur wenn man neues hinzugfuegt wurde
 with open("data.json","w") as file:
