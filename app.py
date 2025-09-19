@@ -68,7 +68,10 @@ class Startwindow(QMainWindow):
         self.flaglist = {}
         self.flaginput = ""
         self.flags = []
-        self.addlist = a
+        if a == "[]":
+            self.addlist = []
+        else :
+            self.addlist = a
         self.imglistmanage()
         self.setWindowTitle('Pinboard/archive')
         self.setFixedSize(windowx,windowy)
@@ -244,12 +247,15 @@ class Startwindow(QMainWindow):
             for y in range(gridy):
                 # zuerst einen next page loesung coden
                 if imgindex >= len(self.imglist[seite]) :
-                    bildpfad =  ""
+                    bLabel  = QLabel() 
+
+
                 else :
                     bildpfad =  "bilder/" + self.imglist[seite][imgindex].get("Adresse")
                     daten = self.imglist[seite][imgindex]
+                    bLabel= bildimage(bildpfad,gridx,daten)
 
-                bLabel= bildimage(bildpfad,gridx,daten)
+                #bLabel= bildimage(bildpfad,gridx,daten)
                # bLabel =  QLabel(self)
                # bLabel.setScaledContents(True)
                # bmap = QPixmap(bildpfad).scaledToHeight(int(windowy/gridx))
@@ -290,19 +296,19 @@ class Startwindow(QMainWindow):
 #        print(self.windowstate)
 
     #Json Datei Informationen werden in eine Dictionary gepackt
-    def diccreator(self,n: str,ad:str ,f: list,no: str,b: int):
+    def diccreator(self,n: str,ad:str ,f: str,no: str,b: int):
         if n == "" or  len(n) == 0 :
             print("falsche Eingabe name")
             return {}
-        elif f == [] or len(f)== 0 :
-            print("falsche Eingabe  liste/flags")
-            return {}
-        elif no == "" or len(no) == 0 :
-            print("falsche Eingabe  liste/flags")
-            return {}
-        elif   len(str(b)) == 0 :
-            print("falsche Eingabe bewertung")
-            return {}
+        #elif f == [] or len(f)== 0 :
+        #    print("falsche Eingabe  liste/flags")
+        #    return {}
+        #elif no == "" or len(no) == 0 :
+        #    print("falsche Eingabe  liste/flags")
+        #    return {}
+      #  elif   len(str(b)) == 0 :
+      #      print("falsche Eingabe bewertung")
+      #      return {}
         res = { "Name" : n, "Adresse" : ad,"Flags": f, "Notizen": no,  "Bewertung" : b}
         return res
 
@@ -310,7 +316,7 @@ class Startwindow(QMainWindow):
         return dict(name =n, flags = f,notes =no , bewertung = b)
 
     #Wenn ein neues Bild erstellt wird,diese Funktion durchgefuehrt, sie erstellen das Dictionary und fuegt es zur addliste hinzu
-    def diccollect(self,n:str,ad: str ,f: list,no: str,b: int):
+    def diccollect(self,n:str,ad: str ,f: str,no: str,b: int):
         a = self.diccreator(n,ad,f,no,b)
         #print(a)
         if a == {} :
@@ -323,33 +329,28 @@ class Startwindow(QMainWindow):
 
 
 
-#with open("data.json","r") as file :
-#    output= json.load(file)
-
-#print(output)
 
 
 
+try :
+    f = open('data.json')
+except FileNotFoundError:
+    f = open('data.json','w')
+    with f:
+        f.write("[]")
+    jstestring = "[]"
+else :
+    with f:
+        jstestring = json.load(f)
 
-#weg ="/home/dumbon/Pictures"
-#ls=os.listdir(weg)
-with open("data.json") as file:
-    jstestring = json.load(file)
-
-#a = diccreator("test",[],"jo",1)
-#print(a)
 
 
-#print(len(jstestring))
-#print(type(jstestring))
 app = QApplication(sys.argv)
 window = Startwindow(jstestring);
 window.show()
 app.exec()
-#print(window.windowstate)
-#print(window.addlist)
 
-    #bzw nur wenn man neues hinzugfuegt wurde
+#bzw nur wenn man neues hinzugfuegt wurde
 with open("data.json","w") as file:
     json.dump(window.addlist,file)
 
